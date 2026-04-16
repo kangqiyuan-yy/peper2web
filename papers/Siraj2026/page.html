@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Functional dissection of complex trait variants at single-nucleotide resolution</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700;900&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #f7f3ed;
+  --bg-warm: #f0e9df;
+  --card-bg: #faf8f4;
+  --border:  #d4c9b8;
+  --crimson: #8b1a1a;
+  --gold:    #c9a84c;
+  --dark:    #1a1208;
+  --muted:   #6b5d4f;
+
+  --r1-color: #8b1a1a;
+  --r2-color: #2e6b50;
+  --r3-color: #4a5d8b;
+  --r4-color: #7a5c2e;
+  --r5-color: #5c2d6e;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--dark);
+  font-family: 'Lora', Georgia, serif;
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.poster { max-width: 1800px; margin: 0 auto; }
+
+/* ── Header ── */
+.header {
+  background: var(--bg);
+  padding: 0;
+  position: relative;
+}
+.header-bar {
+  height: 6px;
+  background: linear-gradient(90deg, var(--crimson) 0%, var(--gold) 50%, var(--crimson) 100%);
+}
+.header-inner {
+  padding: 40px 55px 30px;
+  border-bottom: 2px dashed var(--gold);
+}
+.header-inner h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--crimson);
+  line-height: 1.2;
+  margin-bottom: 14px;
+  max-width: 1200px;
+}
+.header-authors {
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 1200px;
+}
+.header-authors .corresp { color: var(--crimson); font-weight: 600; }
+.header-meta {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.header-meta a { color: var(--crimson); text-decoration: none; }
+.header-meta a:hover { text-decoration: underline; }
+
+/* ── Language Switch ── */
+.lang-switch {
+  position: fixed;
+  top: 16px; right: 24px;
+  z-index: 100;
+  display: flex;
+  background: rgba(250,248,244,0.97);
+  border-radius: 6px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.15);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.lang-btn {
+  border: none; background: transparent;
+  padding: 8px 18px;
+  font-size: 14px; font-weight: 700;
+  font-family: 'Lora', serif;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.lang-btn:hover { color: var(--crimson); background: var(--bg-warm); }
+.lang-btn.active { background: var(--crimson); color: white; }
+
+/* ── Content Grid ── */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  padding: 30px 55px 20px;
+}
+
+/* ── Grid assignment ── */
+.background   { grid-column: 1; grid-row: 1; }
+.study-design { grid-column: 2 / 4; grid-row: 1; }
+.methods      { grid-column: 1; grid-row: 2 / 4; }
+.result-1     { grid-column: 2; grid-row: 2; }
+.result-2     { grid-column: 3; grid-row: 2; }
+.result-3     { grid-column: 2; grid-row: 3; }
+.result-4     { grid-column: 3; grid-row: 3; }
+.result-5     { grid-column: 2 / 4; grid-row: 4; }
+.conclusions  { grid-column: 1; grid-row: 4; }
+
+/* ── Section Card ── */
+.section {
+  background: var(--card-bg);
+  border-radius: 6px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--crimson);
+}
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--crimson);
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gold);
+  display: inline-block;
+}
+.section p, .section li {
+  font-size: 0.93rem;
+  line-height: 1.7;
+  color: var(--dark);
+  margin-bottom: 8px;
+}
+.section ul { padding-left: 20px; }
+.section li { margin-bottom: 4px; }
+
+/* ── Result Number Badge ── */
+.result-number {
+  position: absolute;
+  top: -14px; left: 16px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem; font-weight: 900;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 2;
+}
+
+/* ── Study Design Table ── */
+.design-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-top: 10px;
+}
+.design-table th {
+  background: var(--bg-warm);
+  color: var(--crimson);
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--gold);
+}
+.design-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.design-table tr:last-child td { border-bottom: none; }
+
+/* ── Stat Box ── */
+.stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.stat-box {
+  flex: 1; min-width: 120px;
+  background: var(--bg-warm);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  border-left: 3px solid var(--gold);
+}
+.stat-box .number {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem; font-weight: 900;
+  color: var(--crimson);
+  display: block;
+}
+.stat-box .label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* ── Pipeline ── */
+.pipeline { display: flex; flex-direction: column; gap: 0; margin: 10px 0; }
+.pipeline-stage { position: relative; padding: 14px; border-radius: 6px; }
+.pipeline-stage.stage-exp {
+  background: linear-gradient(135deg, var(--crimson), #5c2d0e);
+  color: white;
+}
+.pipeline-stage.stage-proc {
+  background: var(--bg-warm);
+  border: 1.5px solid var(--border);
+}
+.pipeline-stage.stage-analysis {
+  background: var(--card-bg);
+  border: 2px solid var(--crimson);
+}
+.stage-label {
+  font-size: 0.62rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin-bottom: 6px; opacity: 0.7;
+}
+.stage-exp .stage-label { color: rgba(255,255,255,0.7); }
+.stage-proc .stage-label { color: var(--muted); }
+.stage-analysis .stage-label { color: var(--crimson); }
+.stage-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem; font-weight: 700;
+  margin-bottom: 4px;
+}
+.stage-exp .stage-title { color: white; }
+.stage-proc .stage-title { color: var(--dark); }
+.stage-analysis .stage-title { color: var(--dark); }
+.stage-detail {
+  font-size: 0.78rem; opacity: 0.85; line-height: 1.5;
+}
+.stage-exp .stage-detail { color: rgba(255,255,255,0.85); }
+.stage-proc .stage-detail { color: var(--muted); }
+.stage-tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.tool-tag {
+  display: inline-block;
+  font-size: 0.68rem; font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+}
+.stage-exp .tool-tag { background: rgba(255,255,255,0.18); color: white; }
+.stage-proc .tool-tag { background: white; color: var(--crimson); border: 1px solid var(--border); }
+.pipeline-connector { display: flex; justify-content: center; padding: 3px 0; }
+.pipeline-connector .conn-line {
+  width: 2px; height: 14px;
+  background: var(--crimson);
+  position: relative;
+}
+.pipeline-connector .conn-line::after {
+  content: ''; position: absolute;
+  bottom: -4px; left: -3.5px;
+  border-left: 4.5px solid transparent;
+  border-right: 4.5px solid transparent;
+  border-top: 5px solid var(--crimson);
+}
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.analysis-card {
+  background: var(--bg-warm);
+  border-radius: 5px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--gold);
+}
+.analysis-card .ac-name {
+  font-size: 0.82rem; font-weight: 700;
+  color: var(--dark); margin-bottom: 2px;
+}
+.analysis-card .ac-tools {
+  font-size: 0.7rem; color: var(--muted); line-height: 1.4;
+}
+
+/* ── Finding Card ── */
+.finding-card {
+  background: var(--bg-warm);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  border-left: 4px solid var(--crimson);
+  position: relative;
+}
+.finding-card::before {
+  content: '\201C';
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.5rem;
+  color: var(--gold);
+  opacity: 0.4;
+  position: absolute;
+  top: -4px; left: 8px;
+  line-height: 1;
+}
+.finding-card p {
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+
+/* ── Conclusions ── */
+.conclusions {
+  background: linear-gradient(135deg, var(--crimson) 0%, #5c2d0e 100%) !important;
+  color: white !important;
+  border-top: none !important;
+}
+.conclusions .section-title {
+  color: white;
+  border-bottom-color: var(--gold);
+}
+.concl-item {
+  display: flex; align-items: flex-start;
+  gap: 10px; margin-bottom: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 5px;
+  border-left: 3px solid var(--gold);
+}
+.concl-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem; font-weight: 900;
+  color: var(--gold); flex-shrink: 0;
+  width: 28px; text-align: center;
+}
+.concl-text {
+  font-size: 0.88rem; line-height: 1.6;
+  color: rgba(255,255,255,0.92);
+}
+
+/* ── Figure Collapse ── */
+details.fig-collapse {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+details.fig-collapse summary {
+  background: var(--bg-warm);
+  padding: 8px 12px;
+  font-weight: 700; font-size: 0.88rem;
+  color: var(--crimson);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  list-style: none;
+}
+details.fig-collapse summary::-webkit-details-marker { display: none; }
+details.fig-collapse summary::before {
+  content: '\25B8'; font-size: 1rem;
+  color: var(--gold);
+  transition: transform 0.2s;
+  display: inline-block;
+}
+details.fig-collapse[open] summary::before { transform: rotate(90deg); }
+.fig-image-container {
+  text-align: center; margin: 6px;
+  border: 1px solid var(--border); border-radius: 4px;
+  overflow: hidden;
+}
+.fig-image-container img {
+  max-width: 100%; height: auto;
+  display: block; margin: 0 auto;
+  cursor: zoom-in;
+  transition: opacity 0.2s;
+}
+.fig-image-container img:hover { opacity: 0.85; }
+.fig-caption {
+  font-size: 0.78rem; color: var(--muted);
+  padding: 6px 10px; background: var(--bg-warm);
+  text-align: left; line-height: 1.5;
+}
+
+/* ── Lightbox ── */
+.lightbox-overlay {
+  display: none; position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.88);
+  z-index: 9999;
+  justify-content: center; align-items: center;
+  cursor: zoom-out;
+}
+.lightbox-overlay.active { display: flex; }
+.lightbox-overlay img {
+  max-width: 92%; max-height: 92%;
+  object-fit: contain; border-radius: 4px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+/* ── Footer ── */
+.footer {
+  background: #2c1a0a;
+  padding: 24px 55px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 30px;
+  color: rgba(255,255,255,0.8);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  border-top: 3px double var(--gold);
+}
+.footer strong {
+  color: var(--gold);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
+.footer a { color: var(--gold); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+/* ── Print ── */
+@media print {
+  body { background: white; padding: 0; }
+  .poster { box-shadow: none; max-width: 100%; }
+  details.fig-collapse[open] { break-inside: avoid; }
+  .lang-switch { display: none; }
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+</style>
+</head>
+<body>
+
+<!-- Language Switch -->
+<div class="lang-switch">
+  <button class="lang-btn active" data-target="en">EN</button>
+  <button class="lang-btn" data-target="zh">中文</button>
+</div>
+
+<div class="poster">
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="header">
+  <div class="header-bar"></div>
+  <div class="header-inner">
+    <h1>Functional dissection of complex trait variants at single-nucleotide resolution</h1>
+    <div class="header-authors">
+      <span class="corresp">Layla Siraj</span>, Rodrigo I. Castro, Hannah B. Dewey, Susan Kales, John C. Butts,
+      Thanh Thanh L. Nguyen, Masahiro Kanai, Daniel Berenzy, Kousuke Mouri,
+      Qingbo S. Wang, Petko P. Fiziev, Kristin Tsuo, Zachary R. McCaw,
+      Sager J. Gosai, Fran&ccedil;ois Aguet, Ran Cui, Irfahan Kassam, Jeremy McRae,
+      Christopher M. Vockley, Caleb A. Lareau, Sergey Abramov, Alexandr Boystov,
+      Jeff Vierstra, Yukinori Okada, Alexander Gusev, Thouis R. Jones,
+      Eric S. Lander, Pardis C. Sabeti,
+      <span class="corresp">Hilary K. Finucane &#x2709;</span>,
+      <span class="corresp">Steven K. Reilly &#x2709;</span>,
+      <span class="corresp">Jacob C. Ulirsch &#x2709;</span> &amp;
+      <span class="corresp">Ryan Tewhey &#x2709;</span>
+    </div>
+    <div class="header-meta">
+      <em>Nature</em> (2026) &middot;
+      DOI: <a href="https://doi.org/10.1038/s41586-026-10121-6" target="_blank">10.1038/s41586-026-10121-6</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ CONTENT GRID ═══════ -->
+<div class="content">
+
+<!-- ── Background ── -->
+<div class="section background">
+  <h2 class="section-title" data-lang="en">Background</h2>
+  <h2 class="section-title" data-lang="zh">研究背景</h2>
+
+  <p data-lang="en">Genome-wide association studies (GWASs) have linked tens of thousands of loci to complex human traits and diseases, but identifying the exact causal variants remains a core challenge. Most trait-associated variants have weak individual effects and reside in non-coding cis-regulatory elements (CREs), complicating mechanistic interpretation.</p>
+  <p data-lang="zh">全基因组关联研究（GWAS）已将数万个基因位点与复杂人类性状和疾病联系起来，但精确鉴定因果变异仍是核心挑战。大多数性状相关变异具有微弱的个体效应，且位于非编码顺式调控元件（CRE）中，使机制解读更加困难。</p>
+
+  <p data-lang="en">Genetic fine-mapping assigns posterior inclusion probabilities (PIPs) to each variant, but only 10&ndash;20% of trait-associated loci can be resolved to a single variant. Direct genome editing is limited in scale and sensitivity for studying hundreds of thousands of variants.</p>
+  <p data-lang="zh">遗传学精细定位为每个变异分配后验包含概率（PIP），但仅10&ndash;20%的性状相关位点能被解析到单个变异。直接基因组编辑在研究数十万变异时规模和灵敏度有限。</p>
+
+  <p data-lang="en">This study addresses these challenges by deploying massively parallel reporter assays (MPRAs) across five cell types to systematically evaluate the regulatory effects of 221,412 fine-mapped variants, combined with saturation mutagenesis for mechanistic dissection.</p>
+  <p data-lang="zh">本研究通过在五种细胞系中部署大规模平行报告基因检测（MPRA），系统评估221,412个精细定位变异的调控效应，并结合饱和突变分析进行机制解剖，以应对上述挑战。</p>
+</div>
+
+<!-- ── Study Design ── -->
+<div class="section study-design">
+  <h2 class="section-title" data-lang="en">Study Design</h2>
+  <h2 class="section-title" data-lang="zh">研究设计</h2>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <span class="number">221,412</span>
+      <span class="label" data-lang="en">Fine-mapped Variants</span>
+      <span class="label" data-lang="zh">精细定位变异</span>
+    </div>
+    <div class="stat-box">
+      <span class="number">86,064</span>
+      <span class="label" data-lang="en">Control Variants</span>
+      <span class="label" data-lang="zh">对照变异</span>
+    </div>
+    <div class="stat-box">
+      <span class="number">13,121</span>
+      <span class="label" data-lang="en">TARVs Identified</span>
+      <span class="label" data-lang="zh">鉴定的TARV</span>
+    </div>
+    <div class="stat-box">
+      <span class="number">5</span>
+      <span class="label" data-lang="en">Cell Types</span>
+      <span class="label" data-lang="zh">细胞类型</span>
+    </div>
+  </div>
+
+  <table class="design-table">
+    <tr>
+      <th data-lang="en">Parameter</th><th data-lang="en">Details</th>
+      <th data-lang="zh">参数</th><th data-lang="zh">详情</th>
+    </tr>
+    <tr>
+      <td data-lang="en">Species</td><td data-lang="en">Human (<em>Homo sapiens</em>)</td>
+      <td data-lang="zh">物种</td><td data-lang="zh">人（<em>Homo sapiens</em>）</td>
+    </tr>
+    <tr>
+      <td data-lang="en">Cell Lines</td><td data-lang="en">K562 (blood/myeloid), HepG2 (liver), SK-N-SH (brain), HCT116 (colon), A549 (lung)</td>
+      <td data-lang="zh">细胞系</td><td data-lang="zh">K562（血液/髓系）、HepG2（肝脏）、SK-N-SH（脑）、HCT116（结肠）、A549（肺）</td>
+    </tr>
+    <tr>
+      <td data-lang="en">Cohorts</td><td data-lang="en">UK Biobank (366,194), Biobank Japan (178,726), GTEx v.8 (838 individuals, 49 tissues)</td>
+      <td data-lang="zh">队列</td><td data-lang="zh">英国生物样本库（366,194人）、日本生物样本库（178,726人）、GTEx v.8（838人，49组织）</td>
+    </tr>
+    <tr>
+      <td data-lang="en">Traits</td><td data-lang="en">48 complex traits &amp; diseases + 17,969 gene eQTLs across 49 tissues</td>
+      <td data-lang="zh">性状</td><td data-lang="zh">48种复杂性状与疾病 + 17,969个基因eQTL（49种组织）</td>
+    </tr>
+    <tr>
+      <td data-lang="en">Technology</td><td data-lang="en">MPRA (200 bp elements, median 163 barcodes), Saturation Mutagenesis (136 TARVs)</td>
+      <td data-lang="zh">技术</td><td data-lang="zh">MPRA（200 bp元件，中位163条barcode）、饱和突变分析（136个TARV）</td>
+    </tr>
+    <tr>
+      <td data-lang="en">Fine-mapping</td><td data-lang="en">SuSiE with GWAS summary statistics, 95% credible sets, in-sample LD</td>
+      <td data-lang="zh">精细定位</td><td data-lang="zh">SuSiE结合GWAS汇总统计量、95%可信集、样本内LD</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ── Methods ── -->
+<div class="section methods">
+  <h2 class="section-title" data-lang="en">Methods</h2>
+  <h2 class="section-title" data-lang="zh">方法</h2>
+
+  <div class="pipeline">
+    <!-- Stage 1: Experiment -->
+    <div class="pipeline-stage stage-exp">
+      <div class="stage-label">Stage 1 &mdash; Experiment</div>
+      <div class="stage-title" data-lang="en">MPRA Library Construction &amp; Screening</div>
+      <div class="stage-title" data-lang="zh">MPRA文库构建与筛选</div>
+      <div class="stage-detail" data-lang="en">Variant selection &#x2192; 200 bp oligo synthesis (ref/alt alleles) &#x2192; 20 bp barcode pairing &#x2192; Library cloning &#x2192; Transfection into 5 cell types &#x2192; RNA/DNA extraction</div>
+      <div class="stage-detail" data-lang="zh">变异选择 &#x2192; 200 bp寡核苷酸合成（参考/替代等位基因）&#x2192; 20 bp条形码配对 &#x2192; 文库克隆 &#x2192; 转染5种细胞系 &#x2192; RNA/DNA提取</div>
+      <div class="stage-tools">
+        <span class="tool-tag">Agilent SureSelect</span>
+        <span class="tool-tag">Gateway Cloning</span>
+      </div>
+    </div>
+
+    <div class="pipeline-connector"><div class="conn-line"></div></div>
+
+    <!-- Stage 2: Data Processing -->
+    <div class="pipeline-stage stage-proc">
+      <div class="stage-label">Stage 2 &mdash; Data Processing</div>
+      <div class="stage-title" data-lang="en">Quantification &amp; Variant Calling</div>
+      <div class="stage-title" data-lang="zh">定量与变异鉴定</div>
+      <div class="stage-detail" data-lang="en">Barcode counting &#x2192; RNA/DNA ratio (log<sub>2</sub>FC) &#x2192; Active element calling (|log<sub>2</sub>FC| &gt; 1, Bonferroni P &lt; 0.01) &#x2192; emVar identification (FDR &lt; 0.1)</div>
+      <div class="stage-detail" data-lang="zh">Barcode计数 &#x2192; RNA/DNA比值（log<sub>2</sub>FC）&#x2192; 活性元件鉴定（|log<sub>2</sub>FC| &gt; 1, Bonferroni P &lt; 0.01）&#x2192; emVar识别（FDR &lt; 0.1）</div>
+      <div class="stage-tools">
+        <span class="tool-tag">SAIGE</span>
+        <span class="tool-tag">BOLT-LMM</span>
+        <span class="tool-tag">SuSiE</span>
+        <span class="tool-tag">Wald test</span>
+        <span class="tool-tag">Benjamini-Hochberg</span>
+      </div>
+    </div>
+
+    <div class="pipeline-connector"><div class="conn-line"></div></div>
+
+    <!-- Stage 3: Analysis -->
+    <div class="pipeline-stage stage-analysis">
+      <div class="stage-label">Stage 3 &mdash; Multi-dimensional Analysis</div>
+      <div class="analysis-grid">
+        <div class="analysis-card">
+          <div class="ac-name" data-lang="en">TARV Prioritization</div>
+          <div class="ac-name" data-lang="zh">TARV优先级排序</div>
+          <div class="ac-tools">emVar + CRE overlap, Precision-Recall</div>
+        </div>
+        <div class="analysis-card">
+          <div class="ac-name" data-lang="en">TF Motif Analysis</div>
+          <div class="ac-name" data-lang="zh">TF基序分析</div>
+          <div class="ac-tools">PWM matching, ChIP-seq, DHS footprints</div>
+        </div>
+        <div class="analysis-card">
+          <div class="ac-name" data-lang="en">Saturation Mutagenesis</div>
+          <div class="ac-name" data-lang="zh">饱和突变分析</div>
+          <div class="ac-tools">Activity blocks, Gaussian filtering</div>
+        </div>
+        <div class="analysis-card">
+          <div class="ac-name" data-lang="en">Epistasis Testing</div>
+          <div class="ac-name" data-lang="zh">上位性检测</div>
+          <div class="ac-tools">Diplotype MPRA, 2,522 variant pairs</div>
+        </div>
+        <div class="analysis-card" style="border-left-color: var(--crimson);">
+          <div class="ac-name" data-lang="en">Enformer Prediction</div>
+          <div class="ac-name" data-lang="zh">Enformer预测</div>
+          <div class="ac-tools">Transformer model, chromatin &amp; TF effects</div>
+        </div>
+        <div class="analysis-card" style="border-left-color: var(--crimson);">
+          <div class="ac-name" data-lang="en">Base Editing Validation</div>
+          <div class="ac-name" data-lang="zh">碱基编辑验证</div>
+          <div class="ac-tools">K562, endogenous gene expression</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ RESULT 1 ═══════ -->
+<div class="section result-1" style="border-top-color: var(--r1-color);">
+  <div class="result-number" style="background: var(--r1-color);">1</div>
+  <h2 class="section-title" data-lang="en">Functional Element Identification</h2>
+  <h2 class="section-title" data-lang="zh">功能元件鉴定</h2>
+
+  <p data-lang="en">MPRA tested 304,278 unique elements across five cell types (K562, HepG2, SK-N-SH, HCT116, A549). Of these, 30.4% (92,560) were active, with 96.6% enhancing transcription. Among active elements, 40.2% (37,249) harbored expression-modulating variants (emVars).</p>
+  <p data-lang="zh">MPRA在五种细胞类型（K562、HepG2、SK-N-SH、HCT116、A549）中测试了304,278个独特元件。其中30.4%（92,560个）具有活性，96.6%增强转录。在活性元件中，40.2%（37,249个）含有表达调控变异（emVars）。</p>
+
+  <div class="finding-card">
+    <p data-lang="en">Element activity correlates with chromatin accessibility (Pearson r = 0.61 at promoters, 0.30 at distal CREs), and TF motif contributions are largely consistent across cell types (r = 0.88&ndash;0.94).</p>
+    <p data-lang="zh">元件活性与染色质可及性相关（启动子处Pearson r = 0.61，远端CRE处r = 0.30），TF基序贡献在各细胞类型间高度一致（r = 0.88&ndash;0.94）。</p>
+  </div>
+
+  <details class="fig-collapse" open>
+    <summary>Figure 1 &mdash; Functional genetic elements housing fine-mapped traits</summary>
+    <div class="fig-content">
+      <div class="fig-image-container">
+        <img src="figures/fig1.png" alt="Figure 1">
+        <div class="fig-caption" data-lang="en">Fine-mapped complex trait and eQTL variants tested by MPRA. (a) Variant sources. (b) Control design. (c) Experimental overview. (d) Activity vs. chromatin accessibility. (e) TF motif contributions. (f) emVar identification.</div>
+        <div class="fig-caption" data-lang="zh">通过MPRA测试的精细定位复杂性状和eQTL变异。(a) 变异来源。(b) 对照设计。(c) 实验概览。(d) 活性与染色质可及性。(e) TF基序贡献。(f) emVar鉴定。</div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ═══════ RESULT 2 ═══════ -->
+<div class="section result-2" style="border-top-color: var(--r2-color);">
+  <div class="result-number" style="background: var(--r2-color);">2</div>
+  <h2 class="section-title" data-lang="en">Causal Variant Prioritization</h2>
+  <h2 class="section-title" data-lang="zh">因果变异优先排序</h2>
+
+  <p data-lang="en">Requiring CRE overlap with allele-specific effects (TARV status) improved precision to 0.82&ndash;0.83 while maintaining recall of 0.15&ndash;0.20. In total, 13,121 trait-associated regulatory variants (TARVs) were identified across 18,976 non-coding credible sets.</p>
+  <p data-lang="zh">要求CRE重叠与等位基因特异性效应（TARV状态）将精度提高至0.82&ndash;0.83，同时保持0.15&ndash;0.20的召回率。共鉴定出13,121个性状相关调控变异（TARV），覆盖18,976个非编码可信集。</p>
+
+  <div class="finding-card">
+    <p data-lang="en">69% of TARVs disrupt known TF motifs, and emVar allelic effects correlate with chromatin accessibility (r = 0.65) and TF occupancy (r = 0.54). Enformer identified 62.6% of high-PIP TARVs versus only 7.3% of background CRE variants.</p>
+    <p data-lang="zh">69%的TARV破坏已知TF基序，emVar等位基因效应与染色质可及性（r = 0.65）和TF占据（r = 0.54）相关。Enformer识别了62.6%的高PIP TARV，而背景CRE变异仅为7.3%。</p>
+  </div>
+
+  <details class="fig-collapse" open>
+    <summary>Figure 2 &mdash; Reporter assays recapitulate endogenous regulatory function</summary>
+    <div class="fig-content">
+      <div class="fig-image-container">
+        <img src="figures/fig2.png" alt="Figure 2">
+        <div class="fig-caption" data-lang="en">emVar validation and TARV identification. (a) emVar proportion across PIP bins. (b) Correlation with eQTL effects. (c) Chromatin accessibility correlation. (d) TF motif score correlation. (e) Precision-recall. (f) Variant effect mechanisms.</div>
+        <div class="fig-caption" data-lang="zh">emVar验证与TARV鉴定。(a) 各PIP区间emVar比例。(b) 与eQTL效应的相关性。(c) 染色质可及性相关性。(d) TF基序评分相关性。(e) 精度-召回率。(f) 变异效应机制。</div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ═══════ RESULT 3 ═══════ -->
+<div class="section result-3" style="border-top-color: var(--r3-color);">
+  <div class="result-number" style="background: var(--r3-color);">3</div>
+  <h2 class="section-title" data-lang="en">Regulatory Epistasis &amp; Multiple Variants</h2>
+  <h2 class="section-title" data-lang="zh">调控上位性与多变异效应</h2>
+
+  <p data-lang="en">Testing 2,522 variant pairs across all four diplotypes revealed regulatory epistasis at 11% of pairs (FDR &lt; 0.1). Non-additive effects were driven by variant proximity (mean 18 bp, P = 2.0 &times; 10<sup>&minus;10</sup>), with 77% being dampening interactions where combined effects were smaller than expected.</p>
+  <p data-lang="zh">对2,522对变异的四种单倍型组合测试发现，11%的变异对存在调控上位性（FDR &lt; 0.1）。非加性效应受变异间距离驱动（平均18 bp，P = 2.0 &times; 10<sup>&minus;10</sup>），77%为抑制型相互作用，联合效应小于预期。</p>
+
+  <div class="finding-card">
+    <p data-lang="en">Excess TARVs in credible sets support regulatory allelic heterogeneity, with 0.1&ndash;3.0% of credible sets containing multiple functional variants. This provides evidence for linkage masking, where opposing-effect variants escape negative selection.</p>
+    <p data-lang="zh">可信集中TARV的过量支持调控等位基因异质性，0.1&ndash;3.0%的可信集包含多个功能性变异。这为连锁掩蔽提供了证据，即具有相反效应的变异逃避负选择。</p>
+  </div>
+
+  <details class="fig-collapse" open>
+    <summary>Figure 3 &mdash; Regulatory allelic heterogeneity and multiple causal variants</summary>
+    <div class="fig-content">
+      <div class="fig-image-container">
+        <img src="figures/fig3.png" alt="Figure 3">
+        <div class="fig-caption" data-lang="en">Epistatic interactions in fine-mapped variant pairs. (a) Diplotype MPRA design. (b) Additive vs. observed double-allele effects. (c) Distance dependence. (d) Amplifying vs. dampening effects. (e) ESS2 locus example. (f) Excess TARVs in credible sets.</div>
+        <div class="fig-caption" data-lang="zh">精细定位变异对的上位性相互作用。(a) 单倍型MPRA设计。(b) 加性预测与实际双等位基因效应。(c) 距离依赖性。(d) 放大与抑制效应。(e) ESS2位点示例。(f) 可信集中过量TARV。</div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ═══════ RESULT 4 ═══════ -->
+<div class="section result-4" style="border-top-color: var(--r4-color);">
+  <div class="result-number" style="background: var(--r4-color);">4</div>
+  <h2 class="section-title" data-lang="en">Saturation Mutagenesis Maps</h2>
+  <h2 class="section-title" data-lang="zh">饱和突变功能图谱</h2>
+
+  <p data-lang="en">Deep mutational scanning of 128 elements containing 136 TARVs recovered 99% of unique substitutions (&gt;170,000). Activity blocks (ABs)&mdash;short motif-like sequences (mean 9 bp)&mdash;were identified in 98% of elements using Gaussian filtering, with at least one TF assigned for 89% of ABs.</p>
+  <p data-lang="zh">对128个包含136个TARV的元件进行深度突变扫描，恢复了99%的独特替换（&gt;170,000个）。利用高斯滤波在98%的元件中识别出活性块（AB）&mdash;短基序样序列（平均9 bp），89%的AB至少匹配一个TF。</p>
+
+  <div class="finding-card">
+    <p data-lang="en">34% of ABs acted as repressors. Cell-type-specific effects were explained by master regulators: GFI1B repression in K562 but not HepG2; SRY/SOX9 activation only in XY HepG2 cells, revealing sex-dependent CDHR3 expression effects (P = 0.026).</p>
+    <p data-lang="zh">34%的AB充当抑制子。细胞类型特异性效应由主调控因子解释：GFI1B在K562中抑制但在HepG2中无效；SRY/SOX9仅在XY HepG2细胞中激活，揭示了CDHR3表达的性别依赖性效应（P = 0.026）。</p>
+  </div>
+
+  <details class="fig-collapse" open>
+    <summary>Figure 4 &mdash; Saturation mutagenesis of 136 fine-mapped TARVs</summary>
+    <div class="fig-content">
+      <div class="fig-image-container">
+        <img src="figures/fig4.png" alt="Figure 4">
+        <div class="fig-caption" data-lang="en">Saturation mutagenesis workflow and results. (a) Canonical vs. non-canonical mechanisms. (b) Experimental design. (c) Motif enrichment in ABs. (d&ndash;g) TARV examples: rs536864738 (GFI1B→PBX3), rs11864973 (KLF1→SNAI1). (h) Cross-cell-type correlation. (i&ndash;k) Sex-dependent rs2529369 effects on CDHR3.</div>
+        <div class="fig-caption" data-lang="zh">饱和突变分析流程与结果。(a) 经典vs非经典机制。(b) 实验设计。(c) AB中基序富集。(d&ndash;g) TARV示例：rs536864738（GFI1B→PBX3）、rs11864973（KLF1→SNAI1）。(h) 跨细胞类型相关性。(i&ndash;k) rs2529369对CDHR3的性别依赖性效应。</div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ═══════ RESULT 5 ═══════ -->
+<div class="section result-5" style="border-top-color: var(--r5-color);">
+  <div class="result-number" style="background: var(--r5-color);">5</div>
+  <h2 class="section-title" data-lang="en">Mechanistic Resolution &amp; Clinical Insights</h2>
+  <h2 class="section-title" data-lang="zh">机制解析与临床启示</h2>
+
+  <p data-lang="en">Saturation mutagenesis explained 91% of all TARVs (124/136), including 91% of non-canonical TARVs (48/53), outperforming Enformer and DHS footprints. For 47 of 53 non-canonical TARVs, saturation mutagenesis nominated at least one causal TF, whereas traditional PWM matching identified only 5.</p>
+  <p data-lang="zh">饱和突变分析解释了91%的TARV（124/136），包括91%的非经典TARV（48/53），优于Enformer和DHS足迹。对于53个非经典TARV中的47个，饱和突变分析提名了至少一个因果TF，而传统PWM匹配仅识别了5个。</p>
+
+  <div class="finding-card">
+    <p data-lang="en">At the HbA1c-associated GATA element (rs191148279), rare allele carriers at adjacent high-impact positions showed 3.8&times; higher odds of HbA1c decrease. A common African-ancestry variant (MAF = 0.18) in an adjacent GATA site also significantly reduced HbA1c (P = 6.4 &times; 10<sup>&minus;10</sup>), demonstrating cross-ancestry functional convergence.</p>
+    <p data-lang="zh">在HbA1c相关的GATA元件（rs191148279）处，相邻高影响位点的罕见等位基因携带者HbA1c下降的几率高3.8倍。相邻GATA位点的一个非洲血统常见变异（MAF = 0.18）也显著降低了HbA1c（P = 6.4 &times; 10<sup>&minus;10</sup>），证明了跨血统的功能趋同。</p>
+  </div>
+
+  <details class="fig-collapse" open>
+    <summary>Figure 5 &mdash; Saturation mutagenesis uncovers variant mechanisms</summary>
+    <div class="fig-content">
+      <div class="fig-image-container">
+        <img src="figures/fig5.png" alt="Figure 5">
+        <div class="fig-caption" data-lang="en">Mechanistic resolution of TARVs. (a) Proportion explained by different methods. (b) Mutation effect distribution. (c) TARV effects vs. maximal substitution effects. (d&ndash;h) HbA1c locus: rs191148279 GATA motif, base editing validation, rare allele carrier effects, cross-cohort meta-analysis. (i&ndash;j) DOP1B epistatic HNF4 interaction.</div>
+        <div class="fig-caption" data-lang="zh">TARV的机制解析。(a) 不同方法解释的比例。(b) 突变效应分布。(c) TARV效应vs最大替换效应。(d&ndash;h) HbA1c位点：rs191148279 GATA基序、碱基编辑验证、罕见等位基因携带者效应、跨队列荟萃分析。(i&ndash;j) DOP1B上位性HNF4相互作用。</div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ── Conclusions ── -->
+<div class="section conclusions">
+  <h2 class="section-title" data-lang="en">Conclusions</h2>
+  <h2 class="section-title" data-lang="zh">结论</h2>
+
+  <div class="concl-item">
+    <div class="concl-num">1</div>
+    <div class="concl-text" data-lang="en">Identified 13,121 trait-associated regulatory variants (TARVs) from 221,412 fine-mapped variants across three major biobanks (UKBB, BBJ, GTEx), providing the most comprehensive functional catalogue of non-coding GWAS variants to date.</div>
+    <div class="concl-text" data-lang="zh">从三大生物样本库（UKBB、BBJ、GTEx）的221,412个精细定位变异中鉴定出13,121个性状相关调控变异（TARV），构建了迄今最全面的非编码GWAS变异功能目录。</div>
+  </div>
+  <div class="concl-item">
+    <div class="concl-num">2</div>
+    <div class="concl-text" data-lang="en">MPRA combined with CRE annotations discriminates causal variants with high precision (0.82&ndash;0.83) and modest recall (0.15&ndash;0.20), substantially outperforming individual annotations alone.</div>
+    <div class="concl-text" data-lang="zh">MPRA结合CRE注释以高精度（0.82&ndash;0.83）和适度召回率（0.15&ndash;0.20）区分因果变异，显著优于单独注释。</div>
+  </div>
+  <div class="concl-item">
+    <div class="concl-num">3</div>
+    <div class="concl-text" data-lang="en">Saturation mutagenesis resolved TF mechanisms for 91% of TARVs, including those missed by canonical motif-based approaches, by identifying activity blocks and matching de novo PWMs to known TFs.</div>
+    <div class="concl-text" data-lang="zh">饱和突变分析通过识别活性块并将从头PWM与已知TF匹配，解析了91%的TARV的TF机制，包括经典基序方法遗漏的变异。</div>
+  </div>
+  <div class="concl-item">
+    <div class="concl-num">4</div>
+    <div class="concl-text" data-lang="en">Detected regulatory epistasis at 11% of tested variant pairs, with predominantly dampening interactions, providing evidence for linkage masking as a mechanism for haplotype-level selection.</div>
+    <div class="concl-text" data-lang="zh">在11%的测试变异对中检测到调控上位性，以抑制型相互作用为主，为连锁掩蔽作为单倍型水平选择机制提供了证据。</div>
+  </div>
+  <div class="concl-item">
+    <div class="concl-num">5</div>
+    <div class="concl-text" data-lang="en">Sequence-to-function maps from saturation mutagenesis enable prediction of rare variant effects from the same regulatory elements, bridging common and rare variant genetics as demonstrated at the HbA1c-associated GATA locus.</div>
+    <div class="concl-text" data-lang="zh">饱和突变分析的序列-功能图谱能够预测同一调控元件中罕见变异的效应，如HbA1c相关GATA位点所示，架起了常见变异与罕见变异遗传学的桥梁。</div>
+  </div>
+</div>
+
+</div><!-- .content -->
+
+<!-- ═══════ FOOTER ═══════ -->
+<div class="footer">
+  <div>
+    <strong data-lang="en">Acknowledgments</strong>
+    <strong data-lang="zh">致谢</strong>
+    <p data-lang="en">Supported by the Broad Institute, The Jackson Laboratory, National Institutes of Health, Howard Hughes Medical Institute, and multiple other funding agencies. Full acknowledgments in the original article.</p>
+    <p data-lang="zh">由博德研究所、杰克逊实验室、美国国立卫生研究院、霍华德·休斯医学研究所及多个资助机构支持。完整致谢见原文。</p>
+  </div>
+  <div>
+    <strong data-lang="en">Data Availability</strong>
+    <strong data-lang="zh">数据可用性</strong>
+    <p data-lang="en">MPRA and saturation mutagenesis data available via GEO and supplementary tables. Code at <a href="https://doi.org/10.1038/s41586-026-10121-6" target="_blank">doi.org/10.1038/s41586-026-10121-6</a>.</p>
+    <p data-lang="zh">MPRA和饱和突变数据通过GEO和补充表格获取。代码见 <a href="https://doi.org/10.1038/s41586-026-10121-6" target="_blank">doi.org/10.1038/s41586-026-10121-6</a>。</p>
+  </div>
+  <div>
+    <strong data-lang="en">Contact</strong>
+    <strong data-lang="zh">联系方式</strong>
+    <p>Hilary K. Finucane: <a href="mailto:finucane@broadinstitute.org">finucane@broadinstitute.org</a></p>
+    <p>Steven K. Reilly: <a href="mailto:steven.k.reilly@yale.edu">steven.k.reilly@yale.edu</a></p>
+    <p>Jacob C. Ulirsch: <a href="mailto:julirsch@illumina.com">julirsch@illumina.com</a></p>
+    <p>Ryan Tewhey: <a href="mailto:Ryan.Tewhey@jax.org">Ryan.Tewhey@jax.org</a></p>
+  </div>
+</div>
+
+</div><!-- .poster -->
+
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox">
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+(function(){
+  // Lightbox
+  var overlay = document.getElementById('lightbox');
+  var lbImg = document.getElementById('lightbox-img');
+  document.querySelectorAll('.fig-image-container img').forEach(function(img){
+    img.addEventListener('click', function(){
+      lbImg.src = this.src;
+      lbImg.alt = this.alt;
+      overlay.classList.add('active');
+    });
+  });
+  overlay.addEventListener('click', function(){ overlay.classList.remove('active'); });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') overlay.classList.remove('active');
+  });
+
+  // Language switch
+  var btns = document.querySelectorAll('.lang-btn');
+  btns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var lang = this.dataset.target;
+      document.querySelectorAll('[data-lang]').forEach(function(el){
+        el.style.display = el.dataset.lang === lang ? '' : 'none';
+      });
+      btns.forEach(function(b){ b.classList.remove('active'); });
+      this.classList.add('active');
+    });
+  });
+  // Default: hide Chinese
+  document.querySelectorAll('[data-lang="zh"]').forEach(function(el){
+    el.style.display = 'none';
+  });
+})();
+</script>
+
+</body>
+</html>
